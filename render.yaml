@@ -13,10 +13,3 @@ services:
         value: YOUR_TELEGRAM_TOKEN
       - key: TELEGRAM_CHAT_ID
         value: YOUR_TELEGRAM_CHAT_ID
-    volumeMounts:
-      - volumeName: chrome-profile
-        mountPath: /app/chrome_profile
-
-volumes:
-  - name: chrome-profile
-    sizeGB: 1
