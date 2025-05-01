@@ -1,9 +1,6 @@
-
 services:
   - type: worker
     name: whatsapp-monitor
-    env: python
-    plan: starter
     region: oregon
     buildCommand: ""
     startCommand: "python main.py"
