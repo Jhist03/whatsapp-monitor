@@ -2,6 +2,7 @@ services:
   - type: worker
     name: whatsapp-monitor
     region: oregon
+    runtime: docker
     buildCommand: ""
     startCommand: "python main.py"
     dockerfilePath: ./Dockerfile
