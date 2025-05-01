@@ -1,0 +1,19 @@
+
+services:
+  - type: worker
+    name: whatsapp-monitor
+    env: python
+    plan: starter
+    region: oregon
+    buildCommand: ""
+    startCommand: "python main.py"
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: TELEGRAM_TOKEN
+        value: YOUR_TELEGRAM_TOKEN
+      - key: TELEGRAM_CHAT_ID
+        value: YOUR_TELEGRAM_CHAT_ID
+    disks:
+      - name: chrome-profile
+        mountPath: /app/chrome_profile
+        sizeGB: 1
