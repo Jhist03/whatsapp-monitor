@@ -4,7 +4,6 @@ services:
     region: oregon
     runtime: docker
     buildCommand: ""
-    startCommand: "python main.py"
     dockerfilePath: ./Dockerfile
     envVars:
       - key: TELEGRAM_TOKEN
