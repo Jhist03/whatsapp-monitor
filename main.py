@@ -72,25 +72,18 @@ def notify_telegram(group, message):
     except Exception as e:
         print(f"⚠️ Telegram error: {e}")
 
-
 def start_driver(headless=True):
     options = Options()
     chrome_profile_path = os.path.join(os.path.dirname(__file__), 'chrome_profile')
-
-    # ✅ Don't delete profile if it's locked — just retry later or handle it gracefully
     options.add_argument(f"--user-data-dir={chrome_profile_path}")
-
-    options.add_argument("--headless=new")
+    if headless:
+        options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-gpu")
     options.add_argument("--disable-blink-features=AutomationControlled")
-
-    options.binary_location = "/usr/bin/google-chrome"
-
     return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-
 
 def open_group_chat(driver, group):
     search_box = WebDriverWait(driver, 10).until(
