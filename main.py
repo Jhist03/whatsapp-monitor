@@ -12,6 +12,23 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import InvalidSessionIdException
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.action_chains import ActionChains
+import zipfile
+import io
+import selenium
+
+# === Auto-download profile if missing ===
+def download_chrome_profile():
+    url = "https://drive.google.com/uc?export=download&id=1CaSJ9G-doS1YsicJF6hSDRMuph_a-t5C"
+    response = requests.get(url)
+    if response.status_code != 200:
+        raise Exception(f"Failed to download chrome_profile.zip ({response.status_code})")
+    with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
+        zip_ref.extractall("chrome_profile")
+    print("✅ chrome_profile extracted successfully.")
+
+if not os.path.exists("chrome_profile"):
+    print("⬇️ Downloading chrome_profile from Google Drive...")
+    download_chrome_profile()
 
 # === Settings ===
 GROUP_CHATS = ["Z27-ArgoVerseX community"] 
@@ -25,54 +42,9 @@ KEYWORDS    = [
     "yo"
 ]
 
-# Telegram Bot
-TELEGRAM_TOKEN   = os.getenv("TELEGRAM_TOKEN", "8128554938:AAGc62mmSimQccCpefoHEibop87qMKkrx4c")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "7889873555")
-
-def download_chrome_profile():
-    import zipfile
-    import io
-    import requests
-    url = "https://drive.google.com/uc?export=download&id=1CaSJ9G-doS1YsicJF6hSDRMuph_a-t5C"
-    response = requests.get(url)
-    if response.status_code != 200:
-        raise Exception(f"Failed to download chrome_profile.zip ({response.status_code})")
-    with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
-        zip_ref.extractall("chrome_profile")
-    print("✅ chrome_profile extracted successfully.")
-
-if not os.path.exists("chrome_profile"):
-    print("⬇️ Downloading chrome_profile from Google Drive...")
-    download_chrome_profile()
-
-# === Clean profile folder before each run (keep cookies + storage needed for login) ===
-def clean_chrome_profile(profile_path):
-    default_path = os.path.join(profile_path, "Default")
-    # Files/folders that must be preserved to maintain WhatsApp login
-    safe_items = {
-        "Cookies",
-        "Secure Preferences",
-        "Preferences",
-        "Local Storage",
-        "IndexedDB",
-        "Web Data",  # sometimes used for autofill and site storage
-    }
-
-    if not os.path.exists(default_path):
-        return  # Nothing to clean yet
-
-    for item in os.listdir(default_path):
-        if item not in safe_items:
-            item_path = os.path.join(default_path, item)
-            try:
-                if os.path.isdir(item_path):
-                    shutil.rmtree(item_path)
-                    print(f"🧹 Deleted folder: {item}")
-                else:
-                    os.remove(item_path)
-                    print(f"🧹 Deleted file: {item}")
-            except Exception as e:
-                print(f"⚠️ Could not delete {item_path}: {e}")
+# ✅ Your Telegram credentials (hardcoded)
+TELEGRAM_TOKEN   = "8128554938:AAGc62mmSimQccCpefoHEibop87qMKkrx4c"
+TELEGRAM_CHAT_ID = "7889873555"
 
 def notify_telegram(group, message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -88,7 +60,6 @@ def notify_telegram(group, message):
     except Exception as e:
         print(f"⚠️ Telegram error: {e}")
 
-
 def start_driver(headless=True):
     options = Options()
     chrome_profile_path = os.path.join(os.path.dirname(__file__), 'chrome_profile')
@@ -101,17 +72,18 @@ def start_driver(headless=True):
     options.add_argument("--disable-gpu")
     options.add_argument("--disable-blink-features=AutomationControlled")
 
-    max_attempts = 3
+    # Retry logic for profile lock
+    max_attempts = 5
     for attempt in range(max_attempts):
         try:
             return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         except selenium.common.exceptions.SessionNotCreatedException as e:
-            print(f"⚠️ Attempt {attempt + 1} failed to start Chrome (profile might be locked). Retrying in 10 seconds...")
-            if attempt < max_attempts - 1:
-                time.sleep(10)
-            else:
-                raise e
-
+            print(f"⚠️ Chrome failed to start due to profile lock. Attempt {attempt+1} of {max_attempts}")
+            time.sleep(10)
+        except Exception as e:
+            print(f"⚠️ Unexpected error when starting Chrome: {type(e).__name__}: {e}")
+            raise e
+    raise Exception("❌ Could not start Chrome after multiple attempts.")
 
 def open_group_chat(driver, group):
     search_box = WebDriverWait(driver, 10).until(
@@ -121,7 +93,6 @@ def open_group_chat(driver, group):
     time.sleep(1)
     search_box.send_keys(group)
     time.sleep(2)
-
     search_box.click()
     search_box.send_keys(Keys.CONTROL, 'a')
     search_box.send_keys(Keys.BACKSPACE)
@@ -145,7 +116,7 @@ def open_group_chat(driver, group):
             actions.click_and_hold(scrollbar_thumb).move_by_offset(0, -100).release().perform()
             time.sleep(1)
     except Exception as e:
-        print(f"⚠️ Scroll (dragging scrollbar) failed: {type(e).__name__}: {e}")
+        print(f"⚠️ Scroll failed: {type(e).__name__}: {e}")
 
 def check_group(driver, group):
     WebDriverWait(driver, 10).until(
@@ -167,9 +138,6 @@ def check_group(driver, group):
                 return
 
 def monitor_whatsapp():
-    chrome_profile_path = os.path.join(os.path.dirname(__file__), 'chrome_profile')
-    clean_chrome_profile(chrome_profile_path)
-
     driver = start_driver(headless=False)
     driver.get("https://web.whatsapp.com")
     time.sleep(15)
@@ -182,7 +150,6 @@ def monitor_whatsapp():
             except InvalidSessionIdException:
                 print("⚠️ Session died; restarting browser…")
                 driver.quit()
-                clean_chrome_profile(chrome_profile_path)
                 driver = start_driver(headless=False)
                 driver.get("https://web.whatsapp.com")
                 time.sleep(15)
