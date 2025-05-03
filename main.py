@@ -72,19 +72,12 @@ def notify_telegram(group, message):
     except Exception as e:
         print(f"⚠️ Telegram error: {e}")
 
+
 def start_driver(headless=True):
     options = Options()
     chrome_profile_path = os.path.join(os.path.dirname(__file__), 'chrome_profile')
 
-    # === Fix: force unique profile folder if locked ===
-    unique_profile_path = chrome_profile_path + "_" + str(int(time.time()))
-    if os.path.exists(chrome_profile_path):
-        try:
-            shutil.rmtree(chrome_profile_path)
-        except Exception as e:
-            print(f"⚠️ Could not delete old chrome_profile: {e}")
-    os.makedirs(chrome_profile_path, exist_ok=True)
-
+    # ✅ Don't delete profile if it's locked — just retry later or handle it gracefully
     options.add_argument(f"--user-data-dir={chrome_profile_path}")
 
     options.add_argument("--headless=new")
