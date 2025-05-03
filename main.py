@@ -88,6 +88,7 @@ def notify_telegram(group, message):
     except Exception as e:
         print(f"⚠️ Telegram error: {e}")
 
+
 def start_driver(headless=True):
     options = Options()
     chrome_profile_path = os.path.join(os.path.dirname(__file__), 'chrome_profile')
@@ -99,7 +100,18 @@ def start_driver(headless=True):
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-gpu")
     options.add_argument("--disable-blink-features=AutomationControlled")
-    return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        try:
+            return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        except selenium.common.exceptions.SessionNotCreatedException as e:
+            print(f"⚠️ Attempt {attempt + 1} failed to start Chrome (profile might be locked). Retrying in 10 seconds...")
+            if attempt < max_attempts - 1:
+                time.sleep(10)
+            else:
+                raise e
+
 
 def open_group_chat(driver, group):
     search_box = WebDriverWait(driver, 10).until(
