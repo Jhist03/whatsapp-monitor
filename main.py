@@ -29,6 +29,22 @@ KEYWORDS    = [
 TELEGRAM_TOKEN   = os.getenv("TELEGRAM_TOKEN", "8128554938:AAGc62mmSimQccCpefoHEibop87qMKkrx4c")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "7889873555")
 
+def download_chrome_profile():
+    import zipfile
+    import io
+    import requests
+    url = "https://drive.google.com/uc?export=download&id=1CaSJ9G-doS1YsicJF6hSDRMuph_a-t5C"
+    response = requests.get(url)
+    if response.status_code != 200:
+        raise Exception(f"Failed to download chrome_profile.zip ({response.status_code})")
+    with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
+        zip_ref.extractall("chrome_profile")
+    print("✅ chrome_profile extracted successfully.")
+
+if not os.path.exists("chrome_profile"):
+    print("⬇️ Downloading chrome_profile from Google Drive...")
+    download_chrome_profile()
+
 # === Clean profile folder before each run (keep cookies + storage needed for login) ===
 def clean_chrome_profile(profile_path):
     default_path = os.path.join(profile_path, "Default")
